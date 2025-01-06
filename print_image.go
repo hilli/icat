@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/BourgeoisBear/rasterm"
 	"github.com/hilli/icat/util"
@@ -40,7 +41,11 @@ func PrintImageFile(imageFileName string) error {
 }
 
 func PrintImageURL(imageURL string) error {
-	resp, err := http.Get(imageURL)
+	client := http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	resp, err := client.Get(imageURL)
 	if err != nil {
 		return err
 	}
