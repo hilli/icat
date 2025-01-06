@@ -1,6 +1,7 @@
 # icat
 
 Go version of image cat (or `imgcat`) with `webp` and URL support and fallback to ASCII art.
+`PrintImageFile` and `PrintImageURL` will print the image to the terminal, trying to figure out which terminal you are using and fallback to ASCII art if the terminal does not support images.
 
 ## Cmd line version
 
