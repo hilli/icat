@@ -2,7 +2,6 @@ package icat
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"image"
 	"io"
@@ -11,8 +10,8 @@ import (
 
 	"github.com/BourgeoisBear/rasterm"
 	"github.com/hilli/icat/util"
-	"github.com/qeesung/image2ascii/convert"
-	"golang.org/x/image/webp"
+	ascii "github.com/qeesung/image2ascii/convert"
+	_ "golang.org/x/image/webp"
 )
 
 func PrintImageFile(imageFileName string) error {
@@ -28,18 +27,12 @@ func PrintImageFile(imageFileName string) error {
 	}
 
 	fmt.Printf("image size: %d bytes\n", len(imageData))
-	imageConfig, imageType, err := DecodeImageConfig(imageData)
+	imageConfig, err := DecodeImageConfig(imageData)
 	if err != nil {
 		return err
 	}
 
-	// _, err = imageFile.Seek(0, 0)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// image, _, err := image.Decode(imageFile)
-	img, err := DecodeImage(imageData, imageType)
+	img, err := DecodeImage(imageData)
 	if err != nil {
 		return err
 	}
@@ -58,15 +51,13 @@ func PrintImageURL(imageURL string) error {
 		return err
 	}
 
-	imageConfig, imageType, err := DecodeImageConfig(imageData)
+	imageConfig, err := DecodeImageConfig(imageData)
 	if err != nil {
 		fmt.Println("Error decoding image config:", err)
 		return err
 	}
 
-	fmt.Println("Image type:", imageType)
-
-	img, err := DecodeImage(imageData, imageType)
+	img, err := DecodeImage(imageData)
 	if err != nil {
 		return err
 	}
@@ -75,49 +66,52 @@ func PrintImageURL(imageURL string) error {
 
 func PrintImage(image *image.Image, imageConfig *image.Config, filename string, imageSize int64) error {
 	sixelCapable, _ := rasterm.IsSixelCapable()
+
+	_, _, pw, ph := TermSize() // Get terminal height and width in pixels
+
+	kittyOpts := rasterm.KittyImgOpts{SrcWidth: uint32(imageConfig.Width), SrcHeight: uint32(imageConfig.Height)}
+
+	if pw < uint16(imageConfig.Width) {
+		kittyOpts.SrcWidth = uint32(pw)
+	}
+	if ph < uint16(imageConfig.Height) {
+		kittyOpts.SrcHeight = uint32(ph)
+	}
+
+	fmt.Println("kittyOpts:", kittyOpts)
 	switch {
 	case rasterm.IsKittyCapable():
-		return rasterm.KittyWriteImage(os.Stdout, *image, rasterm.KittyImgOpts{SrcWidth: uint32(imageConfig.Width), SrcHeight: uint32(imageConfig.Height)})
+		return rasterm.KittyWriteImage(os.Stdout, *image, kittyOpts)
 
 	case rasterm.IsItermCapable():
-		rasterm.ItermWriteImageWithOptions(os.Stdout, *image, rasterm.ItermImgOpts{Width: string(imageConfig.Width), Height: string(imageConfig.Height), Name: filename})
+		rasterm.ItermWriteImageWithOptions(os.Stdout, *image, rasterm.ItermImgOpts{Width: string(imageConfig.Width), Height: string(imageConfig.Height), Name: filename, DisplayInline: true})
 		// rasterm.ItermCopyFileInlineWithOptions()
 		return rasterm.ItermWriteImage(os.Stdout, *image)
+
 	case sixelCapable:
-		// Convert image to a paletted format
+		// TODO: Convert image to a paletted format
 		// return rasterm.SixelWriteImage(os.Stdout, *image)
+
 	default:
 		// Ascii art fallback
-		converter := convert.NewImageConverter()
-		convertOptions := convert.DefaultOptions
+		converter := ascii.NewImageConverter()
+		convertOptions := ascii.DefaultOptions
 		fmt.Print("\n", converter.Image2ASCIIString(*image, &convertOptions)) // Align image at the initial position instead of \n first?
 	}
 	return nil
 }
 
-func DecodeImageConfig(imageData []byte) (imageConfig image.Config, imageType string, err error) {
+func DecodeImageConfig(imageData []byte) (imageConfig image.Config, err error) {
 	imageDataReader := bytes.NewReader(imageData)
-	imageConfig, imageType, err = image.DecodeConfig(imageDataReader)
-
-	if err != nil && errors.Is(err, image.ErrFormat) {
-		// Lets try webp
-		_, _ = imageDataReader.Seek(0, 0)
-		imageConfig, err = webp.DecodeConfig(imageDataReader)
-		fmt.Println("imageConfig:", imageConfig, err)
-		if err != nil {
-			return image.Config{}, "", err
-		}
-		imageType = "webp"
+	imageConfig, _, err = image.DecodeConfig(imageDataReader)
+	if err != nil {
+		return image.Config{}, err
 	}
-	return imageConfig, imageType, nil
+	return imageConfig, nil
 }
 
-func DecodeImage(imageData []byte, imageType string) (*image.Image, error) {
+func DecodeImage(imageData []byte) (*image.Image, error) {
 	imageDataReader := bytes.NewReader(imageData)
-	if imageType == "webp" {
-		img, err := webp.Decode(imageDataReader)
-		return &img, err
-	}
 	image, _, err := image.Decode(imageDataReader)
 	if err != nil {
 		return nil, err
