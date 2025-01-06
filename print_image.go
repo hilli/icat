@@ -27,7 +27,6 @@ func PrintImageFile(imageFileName string) error {
 		return err
 	}
 
-	fmt.Printf("image size: %d bytes\n", len(imageData))
 	imageConfig, err := DecodeImageConfig(imageData)
 	if err != nil {
 		return err
@@ -83,7 +82,6 @@ func PrintImage(image *image.Image, imageConfig *image.Config, filename string, 
 		kittyOpts.SrcHeight = uint32(ph)
 	}
 
-	fmt.Println("kittyOpts:", kittyOpts)
 	switch {
 	case rasterm.IsKittyCapable():
 		return rasterm.KittyWriteImage(os.Stdout, *image, kittyOpts)
