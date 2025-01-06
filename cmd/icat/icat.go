@@ -1,7 +1,7 @@
 package main
 
 import (
-	"flag"
+	"net/url"
 	"os"
 
 	"github.com/hilli/icat"
@@ -9,11 +9,7 @@ import (
 
 func main() {
 
-	urlFlag := flag.Bool("u", false, "URL? Set to true if the argument is a URL")
-
-	flag.Parse()
-
-	args := flag.Args()
+	args := os.Args[1:]
 
 	if len(args) == 0 {
 		os.Exit(0)
@@ -21,7 +17,9 @@ func main() {
 
 	for _, arg := range args {
 		var err error
-		if *urlFlag {
+
+		url, err := url.Parse(arg)
+		if err == nil && (url.Scheme == "http" || url.Scheme == "https") {
 			err = icat.PrintImageURL(arg)
 		} else {
 			err = icat.PrintImageFile(arg)
