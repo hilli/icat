@@ -1,0 +1,136 @@
+# Make sure to check the documentation at https://goreleaser.com
+
+# The lines below are called `modelines`. See `:help modeline`
+# Feel free to remove those if you don't want/need to use them.
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj
+
+# More examples at https://github.com/goreleaser/goreleaser/blob/main/.goreleaser.yaml
+
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+    # you may remove this if you don't need go generate
+    # - go generate ./...
+
+builds:
+  - id: icat
+    main: ./cmd/icat/icat.go
+    binary: icat
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    goarm:
+      - "7"
+    # ignore:
+    #   - goos: windows
+    #     goarch: arm
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{ .CommitDate }} -X main.builtBy=goreleaser -X main.treeState={{ .IsGitDirty }}
+  # - id: icat-heif
+  #   main: ./cmd/icat/icat.go
+  #   binary: icat-heif
+  #   env:
+  #     - CGO_ENABLED=1
+  #   goos:
+  #     - linux
+  #     - darwin
+  #   goarch:
+  #     - amd64
+  #     - arm64
+  #   goarm:
+  #     - "7"
+  #   # ignore:
+  #   #   - goos: windows
+  #   #     goarch: arm
+  #   mod_timestamp: "{{ .CommitTimestamp }}"
+  #   flags:
+  #     - -trimpath
+  #   tags:
+  #     - heif
+  #   ldflags:
+  #     - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{ .CommitDate }} -X main.builtBy=goreleaser -X main.treeState={{ .IsGitDirty }}
+          
+archives:
+  - format: tar.gz
+    # this name template makes the OS and Arch compatible with the results of `uname`.
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    files:
+      - README.md
+      - LICENSE
+
+brews:
+  - name: icat
+    goarm: 7
+    commit_author:
+      name: Jens Hilligsøe
+      email: github@hilli.dk
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
+    homepage: "https://github.com/hilli/icat"
+    description: "Command line tool for displaying images in the terminal"
+    license: "MIT"
+    url_template: "https://github.com/hilli/icat/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    skip_upload: false
+    repository:
+      owner: hilli
+      name: homebrew-tap
+      branch: main
+      pull_request:
+        enabled: true
+        draft: false
+
+nfpms:
+  - file_name_template: "{{ .ConventionalFileName }}"
+    id: packages
+    homepage: https://github.com/hilli/icat
+    description: |-
+      Command line tool for displaying images in the terminal
+    maintainer: Jens Hilligsøe <icat@hilli.dk>
+    license: MIT
+    vendor: Jens Hilligsøe
+    bindir: /usr/bin
+    section: utils
+    contents:
+      - src: ./LICENSE
+        dst: /usr/share/doc/icat/copyright
+        file_info:
+          mode: 0644
+    formats:
+      - apk
+      - deb
+      - rpm
+      - archlinux
+    deb:
+      lintian_overrides:
+        - statically-linked-binary
+        - changelog-file-missing-in-native-package
+
+announce:
+  mastodon:
+    enabled: true
+    # Default: '{{ .ProjectName }} {{ .Tag }} is out! Check it out at {{ .ReleaseURL }}'
+    # message_template: 'icat {{.Tag}} is out! Get it at {{.ReleaseURL}}'
+    server: https://mastodon.social
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
