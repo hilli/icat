@@ -11,7 +11,11 @@ import (
 
 	"github.com/BourgeoisBear/rasterm"
 	"github.com/hilli/icat/util"
+
 	ascii "github.com/qeesung/image2ascii/convert"
+
+	_ "golang.org/x/image/bmp"
+	_ "golang.org/x/image/tiff"
 	_ "golang.org/x/image/webp"
 )
 
@@ -68,7 +72,7 @@ func PrintImageURL(imageURL string) error {
 	return PrintImage(img, &imageConfig, imageURL, resp.ContentLength)
 }
 
-func PrintImage(image *image.Image, imageConfig *image.Config, filename string, imageSize int64) error {
+func PrintImage(img *image.Image, imageConfig *image.Config, filename string, imageSize int64) error {
 	sixelCapable, _ := rasterm.IsSixelCapable()
 
 	_, _, pw, ph := TermSize() // Get terminal height and width in pixels
@@ -82,24 +86,29 @@ func PrintImage(image *image.Image, imageConfig *image.Config, filename string, 
 		kittyOpts.SrcHeight = uint32(ph)
 	}
 
+	// resizedImage := resizeImage(*img, kittyOpts.SrcHeight)
+
 	switch {
 	case rasterm.IsKittyCapable():
-		return rasterm.KittyWriteImage(os.Stdout, *image, kittyOpts)
+		return rasterm.KittyWriteImage(os.Stdout, *img, kittyOpts)
 
 	case rasterm.IsItermCapable():
-		rasterm.ItermWriteImageWithOptions(os.Stdout, *image, rasterm.ItermImgOpts{Width: string(imageConfig.Width), Height: string(imageConfig.Height), Name: filename, DisplayInline: true})
-		// rasterm.ItermCopyFileInlineWithOptions()
-		return rasterm.ItermWriteImage(os.Stdout, *image)
+		return rasterm.ItermWriteImage(os.Stdout, *img)
 
 	case sixelCapable:
 		// TODO: Convert image to a paletted format
-		// return rasterm.SixelWriteImage(os.Stdout, *image)
+		// if iPaletted, bOK := img.(*image.Paletted); bOK {
+		// 	return rasterm.SixelWriteImage(os.Stdout, iPaletted)
+		// } else {
+		// 	fmt.Println("[NOT PALETTED, SKIPPING.]")
+		// 	return nil
+		// }
 
 	default:
 		// Ascii art fallback
 		converter := ascii.NewImageConverter()
 		convertOptions := ascii.DefaultOptions
-		fmt.Print("\n", converter.Image2ASCIIString(*image, &convertOptions)) // Align image at the initial position instead of \n first?
+		fmt.Print("\n", converter.Image2ASCIIString(*img, &convertOptions)) // Align image at the initial position instead of \n first?
 	}
 	return nil
 }
