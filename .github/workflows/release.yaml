@@ -6,6 +6,11 @@ on:
     tags:
       - "**"
 
+permissions: #See https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/controlling-permissions-for-github_token
+  contents: write       # Can make a release
+  packages: write       # Can upload packages
+  pull-requests: write  # Can create pull requests (if needed for brews etc.)
+
 jobs:
   release:
     name: Release
@@ -28,7 +33,7 @@ jobs:
           version: latest
           args: release --clean
         env:
-          GITHUB_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
           MASTODON_CLIENT_ID: ${{ secrets.MASTODON_CLIENT_ID }}
           MASTODON_CLIENT_SECRET: ${{ secrets.MASTODON_CLIENT_SECRET }}
           MASTODON_ACCESS_TOKEN: ${{ secrets.MASTODON_ACCESS_TOKEN }}
+
