@@ -15,7 +15,10 @@ import (
 	ascii "github.com/qeesung/image2ascii/convert"
 
 	_ "golang.org/x/image/bmp"
+	_ "golang.org/x/image/riff"
 	_ "golang.org/x/image/tiff"
+	_ "golang.org/x/image/vp8"
+	_ "golang.org/x/image/vp8l"
 	_ "golang.org/x/image/webp"
 )
 
