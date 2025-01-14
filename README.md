@@ -19,6 +19,25 @@ go install -tags heif github.com/hilli/icat/cmd/icat@latest
 brew install libheif
 ```
 
+On Ubuntu, you can install it via `apt`:
+
+```shell
+sudo apt install libheif-dev
+```
+
+but you will also probably need to downgrade the version used in `icat` before compilation. Ie installing libheif on Ubuntu 24.10 will [currently] give you version 1.18.1:
+
+```shell
+go get github.com/strukturag/libheif@v1.18.1
+```
+
+and then you can install `icat` with `heif` support:
+
+```shell
+go install --tags=heif cmd/icat/icat.go
+ls -l $(go env GOPATH)/bin/icat
+```
+
 `libheif` should be available on most package managers.
 
 Alternatively, you can download the binary from the [releases page](https://github.com/hilli/icat/releases) or install via [Homebrew](https://brew.sh/):
