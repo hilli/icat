@@ -11,6 +11,7 @@ import (
 
 	"github.com/BourgeoisBear/rasterm"
 	"github.com/hilli/icat/util"
+	"github.com/nfnt/resize"
 
 	ascii "github.com/qeesung/image2ascii/convert"
 
@@ -76,11 +77,12 @@ func PrintImageURL(imageURL string) error {
 }
 
 func PrintImage(img *image.Image, imageConfig *image.Config, filename string, imageSize int64) error {
+	var img2 image.Image
 	sixelCapable, _ := rasterm.IsSixelCapable()
 
 	_, _, pw, ph := TermSize() // Get terminal height and width in pixels
 
-	kittyOpts := rasterm.KittyImgOpts{SrcWidth: uint32(imageConfig.Width), SrcHeight: uint32(imageConfig.Height)}
+	kittyOpts := rasterm.KittyImgOpts{SrcWidth: uint32(pw), SrcHeight: uint32(ph)}
 
 	if pw < uint16(imageConfig.Width) {
 		kittyOpts.SrcWidth = uint32(pw)
@@ -89,14 +91,22 @@ func PrintImage(img *image.Image, imageConfig *image.Config, filename string, im
 		kittyOpts.SrcHeight = uint32(ph)
 	}
 
-	// resizedImage := resizeImage(*img, kittyOpts.SrcHeight)
+	if pw < uint16(imageConfig.Width) {
+		img2 = resize.Resize(uint(pw), 0, *img, resize.NearestNeighbor)
+	}
+
+	img2Height := img2.Bounds().Max.Y
+
+	if ph < uint16(img2Height) {
+		img2 = resize.Resize(0, uint(ph), img2, resize.NearestNeighbor)
+	}
 
 	switch {
 	case rasterm.IsKittyCapable():
-		return rasterm.KittyWriteImage(os.Stdout, *img, kittyOpts)
+		return rasterm.KittyWriteImage(os.Stdout, img2, kittyOpts)
 
 	case rasterm.IsItermCapable():
-		return rasterm.ItermWriteImage(os.Stdout, *img)
+		return rasterm.ItermWriteImage(os.Stdout, img2)
 
 	case sixelCapable:
 		// TODO: Convert image to a paletted format
@@ -111,7 +121,7 @@ func PrintImage(img *image.Image, imageConfig *image.Config, filename string, im
 		// Ascii art fallback
 		converter := ascii.NewImageConverter()
 		convertOptions := ascii.DefaultOptions
-		fmt.Print("\n", converter.Image2ASCIIString(*img, &convertOptions)) // Align image at the initial position instead of \n first?
+		fmt.Print("\n", converter.Image2ASCIIString(img2, &convertOptions)) // Align image at the initial position instead of \n first?
 	}
 	return nil
 }
