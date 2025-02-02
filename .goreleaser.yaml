@@ -91,7 +91,7 @@ brews:
     repository:
       owner: hilli
       name: homebrew-tap
-      branch: main
+      branch: new-icat-release
       pull_request:
         enabled: true
         draft: false
