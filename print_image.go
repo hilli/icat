@@ -35,16 +35,11 @@ func PrintImageFile(imageFileName string) error {
 		return err
 	}
 
-	imageConfig, err := DecodeImageConfig(imageData)
-	if err != nil {
-		return err
-	}
-
 	img, err := DecodeImage(imageData)
 	if err != nil {
 		return err
 	}
-	return PrintImage(img, &imageConfig, imageFileName, imageSize)
+	return PrintImage(img, imageFileName, imageSize)
 }
 
 func PrintImageURL(imageURL string) error {
@@ -63,43 +58,31 @@ func PrintImageURL(imageURL string) error {
 		return err
 	}
 
-	imageConfig, err := DecodeImageConfig(imageData)
-	if err != nil {
-		fmt.Println("Error decoding image config:", err)
-		return err
-	}
-
 	img, err := DecodeImage(imageData)
 	if err != nil {
 		return err
 	}
-	return PrintImage(img, &imageConfig, imageURL, resp.ContentLength)
+	return PrintImage(img, imageURL, resp.ContentLength)
 }
 
-func PrintImage(img *image.Image, imageConfig *image.Config, filename string, imageSize int64) error {
-	var img2 image.Image
+func PrintImage(img *image.Image, filename string, imageSize int64) error {
+	var img2 image.Image = *img
 	sixelCapable, _ := rasterm.IsSixelCapable()
 
 	_, _, pw, ph := TermSize() // Get terminal height and width in pixels
+	size, resizeOption := resizeConstraints(img2.Bounds(), int(pw), int(ph))
 
-	kittyOpts := rasterm.KittyImgOpts{SrcWidth: uint32(pw), SrcHeight: uint32(ph)}
-
-	if pw < uint16(imageConfig.Width) {
-		kittyOpts.SrcWidth = uint32(pw)
-	}
-	if ph < uint16(imageConfig.Height) {
-		kittyOpts.SrcHeight = uint32(ph)
-	}
-
-	if pw < uint16(imageConfig.Width) {
-		img2 = resize.Resize(uint(pw), 0, *img, resize.NearestNeighbor)
+	switch resizeOption {
+	case 'x':
+		img2 = resize.Resize(uint(size), 0, img2, resize.NearestNeighbor)
+	case 'y':
+		img2 = resize.Resize(0, uint(size), img2, resize.NearestNeighbor)
 	}
 
-	img2Height := img2.Bounds().Max.Y
+	newWidth := img2.Bounds().Max.X
+	newHeight := img2.Bounds().Max.Y
 
-	if ph < uint16(img2Height) {
-		img2 = resize.Resize(0, uint(ph), img2, resize.NearestNeighbor)
-	}
+	kittyOpts := rasterm.KittyImgOpts{SrcWidth: uint32(newWidth), SrcHeight: uint32(newHeight)}
 
 	switch {
 	case rasterm.IsKittyCapable():
@@ -124,15 +107,6 @@ func PrintImage(img *image.Image, imageConfig *image.Config, filename string, im
 		fmt.Print("\n", converter.Image2ASCIIString(img2, &convertOptions)) // Align image at the initial position instead of \n first?
 	}
 	return nil
-}
-
-func DecodeImageConfig(imageData []byte) (imageConfig image.Config, err error) {
-	imageDataReader := bytes.NewReader(imageData)
-	imageConfig, _, err = image.DecodeConfig(imageDataReader)
-	if err != nil {
-		return image.Config{}, err
-	}
-	return imageConfig, nil
 }
 
 func DecodeImage(imageData []byte) (*image.Image, error) {

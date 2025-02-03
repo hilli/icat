@@ -15,7 +15,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	for _, arg := range args {
+	for i, arg := range args {
 		var err error
 
 		url, err := url.Parse(arg)
@@ -26,6 +26,9 @@ func main() {
 		}
 		if err != nil {
 			os.Stderr.WriteString(err.Error())
+		}
+		if i < len(args)-1 {
+			os.Stdout.WriteString("\n")
 		}
 	}
 }
