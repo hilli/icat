@@ -77,6 +77,8 @@ func PrintImage(img *image.Image, filename string, imageSize int64) error {
 		img2 = resize.Resize(uint(size), 0, img2, resize.NearestNeighbor)
 	case 'y':
 		img2 = resize.Resize(0, uint(size), img2, resize.NearestNeighbor)
+	case '0':
+		// Do nothing
 	}
 
 	newWidth := img2.Bounds().Max.X

@@ -8,6 +8,10 @@ func resizeConstraints(imageBounds image.Rectangle, maxHeight, maxWidth int) (si
 	imgHeight := imageBounds.Dy()
 	imgWidth := imageBounds.Dx()
 
+	if maxHeight == 0 || maxWidth == 0 {
+		return 0, '0' // Don't resize
+	}
+
 	if imgHeight <= maxHeight && imgWidth <= maxWidth {
 		return 0, '0' // Don't resize
 	}
