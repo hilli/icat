@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"image"
+	"image/color/palette"
+	"image/draw"
 	"io"
 	"net/http"
 	"os"
@@ -15,6 +17,10 @@ import (
 
 	ascii "github.com/qeesung/image2ascii/convert"
 
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
+
 	_ "golang.org/x/image/bmp"
 	_ "golang.org/x/image/riff"
 	_ "golang.org/x/image/tiff"
@@ -23,7 +29,7 @@ import (
 	_ "golang.org/x/image/webp"
 )
 
-func PrintImageFile(imageFileName string) error {
+func PrintImageFile(imageFileName string, forceASCII bool) error {
 	imageFile, imageSize, err := util.FileAndStat(imageFileName)
 	if err != nil {
 		return err
@@ -39,10 +45,10 @@ func PrintImageFile(imageFileName string) error {
 	if err != nil {
 		return err
 	}
-	return PrintImage(img, imageFileName, imageSize)
+	return PrintImage(img, imageFileName, imageSize, forceASCII)
 }
 
-func PrintImageURL(imageURL string) error {
+func PrintImageURL(imageURL string, forceASCII bool) error {
 	client := http.Client{
 		Timeout: 5 * time.Second,
 	}
@@ -62,11 +68,17 @@ func PrintImageURL(imageURL string) error {
 	if err != nil {
 		return err
 	}
-	return PrintImage(img, imageURL, resp.ContentLength)
+	return PrintImage(img, imageURL, resp.ContentLength, forceASCII)
 }
 
-func PrintImage(img *image.Image, filename string, imageSize int64) error {
+func PrintImage(img *image.Image, filename string, imageSize int64, forceASCII bool) error {
 	var img2 image.Image = *img
+
+	if forceASCII {
+		fmt.Print("\n", ConvertToASCII(img2))
+		return nil
+	}
+
 	sixelCapable, _ := rasterm.IsSixelCapable()
 
 	_, _, pw, ph := TermSize() // Get terminal height and width in pixels
@@ -94,19 +106,13 @@ func PrintImage(img *image.Image, filename string, imageSize int64) error {
 		return rasterm.ItermWriteImage(os.Stdout, img2)
 
 	case sixelCapable:
-		// TODO: Convert image to a paletted format
-		// if iPaletted, bOK := img.(*image.Paletted); bOK {
-		// 	return rasterm.SixelWriteImage(os.Stdout, iPaletted)
-		// } else {
-		// 	fmt.Println("[NOT PALETTED, SKIPPING.]")
-		// 	return nil
-		// }
+		// Convert image to a paletted format
+		palettedImg := ConvertToPaletted(img2)
+		return rasterm.SixelWriteImage(os.Stdout, palettedImg)
 
 	default:
 		// Ascii art fallback
-		converter := ascii.NewImageConverter()
-		convertOptions := ascii.DefaultOptions
-		fmt.Print("\n", converter.Image2ASCIIString(img2, &convertOptions)) // Align image at the initial position instead of \n first?
+		fmt.Print("\n", ConvertToASCII(img2)) // Align image at the initial position instead of \n first?
 	}
 	return nil
 }
@@ -118,4 +124,20 @@ func DecodeImage(imageData []byte) (*image.Image, error) {
 		return nil, err
 	}
 	return &image, nil
+}
+
+// ConvertToPaletted converts an image.Image to an image.Paletted
+// Needed for Sixel conversion
+func ConvertToPaletted(img image.Image) *image.Paletted {
+	bounds := img.Bounds()
+	palettedImg := image.NewPaletted(bounds, palette.Plan9)
+	draw.Draw(palettedImg, bounds, img, bounds.Min, draw.Over)
+	return palettedImg
+}
+
+// ASCII art conversion
+func ConvertToASCII(img image.Image) string {
+	converter := ascii.NewImageConverter()
+	convertOptions := ascii.DefaultOptions
+	return converter.Image2ASCIIString(img, &convertOptions)
 }
