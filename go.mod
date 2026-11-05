@@ -3,7 +3,7 @@ module github.com/hilli/icat
 go 1.23.4
 
 require (
-	github.com/BourgeoisBear/rasterm v1.1.2-0.20250103192908-b3632033a926
+	github.com/BourgeoisBear/rasterm v1.1.3-0.20261105140326-6174df9d5b0b
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/qeesung/image2ascii v1.0.1
 	github.com/strukturag/libheif v1.19.5
